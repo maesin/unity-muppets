@@ -9,19 +9,58 @@ namespace Muppets
 
         public Camera Camera;
 
-        Vector2 Since;
+        public float LongDownSeconds = 0.5f;
+
+        Vector2 DownStartPosition;
+
+        float DownStartTime;
+
+        bool Down
+        {
+            get
+            {
+                return DownStartPosition != Vector2.zero &&
+                DownStartTime != 0;
+            }
+            set
+            {
+                if (value)
+                {
+                    throw new UnityException("Unsupported operation.");
+                }
+                else
+                {
+                    DownStartPosition = Vector3.zero;
+                    DownStartTime = 0;
+                }
+            }
+        }
+
+        bool LongDown;
+
+        bool Move;
+
+        void Update()
+        {
+            if (Down && !Move && Time.time - DownStartTime > LongDownSeconds)
+            {
+                ExecuteEvents.Execute<Puppet>(Puppet, null, (a, b) => a.OnLongDown());
+                LongDown = true;
+            }
+        }
 
         public void OnDown(Vector2 position)
         {
             if (Input.touchCount == 1 || Input.GetMouseButton(0))
             {
-                Since = position;
+                DownStartPosition = position;
+                DownStartTime = Time.time;
             }
         }
 
         public void OnDrag(Vector2 position)
         {
-            if (Since != Vector2.zero && Since != position)
+            if (Down && position != DownStartPosition)
             {
                 #if !UNITY_EDITOR
                 if (Input.touchCount > 1)
@@ -31,7 +70,7 @@ namespace Muppets
                 #endif
 
                 // 押下時からの差分を取得.
-                Vector2 diff = position - Since;
+                Vector2 diff = position - DownStartPosition;
 
                 // アスペクト比の小さい方を操作範囲の一片とする.
                 int side = Mathf.Min(Screen.width, Screen.height) / 2;
@@ -61,13 +100,23 @@ namespace Muppets
 
                 // 送信.
                 ExecuteEvents.Execute<Puppet>(Puppet, null, (a, b) => a.OnMove(direction));
+
+                Move = true;
             }
         }
 
         public void OnUp()
         {
-            Since = Vector2.zero;
-            ExecuteEvents.Execute<Puppet>(Puppet, null, (a, b) => a.OnMove(Vector3.zero));
+            if (Move)
+            {
+                ExecuteEvents.Execute<Puppet>(Puppet, null, (a, b) => a.OnMove(Vector3.zero));
+            }
+            else if (!LongDown)
+            {
+                ExecuteEvents.Execute<Puppet>(Puppet, null, (a, b) => a.OnClick());
+            }
+
+            Down = LongDown = Move = false;
         }
     }
 }
