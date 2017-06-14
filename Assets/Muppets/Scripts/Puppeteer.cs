@@ -9,6 +9,8 @@ namespace Muppets
 
         public Camera Camera;
 
+        public float BeginDragDinstance = 0.1f;
+
         public float LongDownSeconds = 0.5f;
 
         Vector2 DownStartPosition;
@@ -60,7 +62,12 @@ namespace Muppets
 
         public void OnDrag(Vector2 position)
         {
-            if (Down && position != DownStartPosition)
+            // 押下時からの差分を取得.
+            Vector2 diff = position - DownStartPosition;
+
+            float distance = diff.magnitude / Screen.dpi;
+
+            if (distance > BeginDragDinstance)
             {
                 #if !UNITY_EDITOR
                 if (Input.touchCount > 1)
@@ -68,9 +75,6 @@ namespace Muppets
                     return;
                 }
                 #endif
-
-                // 押下時からの差分を取得.
-                Vector2 diff = position - DownStartPosition;
 
                 // アスペクト比の小さい方を操作範囲の一片とする.
                 int side = Mathf.Min(Screen.width, Screen.height) / 2;
