@@ -9,20 +9,22 @@ namespace Muppets
 
         public Camera Camera;
 
-        public float BeginDragDinstance = 0.1f;
+        public float BeginDragDistance = 0.1f;
 
         public float LongDownSeconds = 0.5f;
 
-        Vector2 DownStartPosition;
+        Vector2 LastDownPosition;
 
-        float DownStartTime;
+        float LastDownTime;
+
+        Vector3 LastDragDirection;
 
         bool Down
         {
             get
             {
-                return DownStartPosition != Vector2.zero &&
-                DownStartTime != 0;
+                return LastDownPosition != Vector2.zero &&
+                    LastDownTime != 0;
             }
             set
             {
@@ -32,11 +34,13 @@ namespace Muppets
                 }
                 else
                 {
-                    DownStartPosition = Vector3.zero;
-                    DownStartTime = 0;
+                    LastDownPosition = Vector2.zero;
+                    LastDownTime = 0;
                 }
             }
         }
+
+        int DownCount;
 
         bool LongDown;
 
@@ -44,7 +48,7 @@ namespace Muppets
 
         void Update()
         {
-            if (Down && !Move && Time.time - DownStartTime > LongDownSeconds)
+            if (Down && DownCount == 1 && !Move && Time.time - LastDownTime > LongDownSeconds)
             {
                 ExecuteEvents.Execute<Puppet>(Puppet, null, (a, b) => a.OnLongDown());
                 LongDown = true;
@@ -53,57 +57,66 @@ namespace Muppets
 
         public void OnDown(Vector2 position)
         {
-            if (Input.touchCount == 1 || Input.GetMouseButton(0))
+            if (DownCount == 0)
             {
-                DownStartPosition = position;
-                DownStartTime = Time.time;
+                LastDownPosition = position;
+                LastDownTime = Time.time;
             }
+
+            DownCount++;
         }
 
         public void OnDrag(Vector2 position)
         {
             // 押下時からの差分を取得.
-            Vector2 diff = position - DownStartPosition;
+            Vector2 diff = position - LastDownPosition;
 
-            float distance = diff.magnitude / Screen.dpi;
+            bool detected;
 
-            if (distance > BeginDragDinstance)
+            if (Move)
             {
-                #if !UNITY_EDITOR
-                if (Input.touchCount > 1)
+                detected = diff != Vector2.zero;
+            }
+            else
+            {
+                detected = diff.magnitude / Screen.dpi > BeginDragDistance;
+            }
+
+            if (detected)
+            {
+                if (DownCount == 1)
                 {
-                    return;
-                }
-                #endif
-
-                // アスペクト比の小さい方を操作範囲の一片とする.
-                int side = Mathf.Min(Screen.width, Screen.height) / 2;
-
-                // 正規化.
-                float x = Mathf.Clamp(diff.x / side, -1, 1);
-                float z = Mathf.Clamp(diff.y / side, -1, 1);
-
-                // 画面上の方向.
-                var direction = new Vector3(x, 0, z);
-
-                if (Camera != null)
-                {
-                    // カメラの方向を考慮.
-                    var cameraDirection = Quaternion.Euler(0, Camera.transform.eulerAngles.y, 0) * direction;
+                    // アスペクト比の小さい方を操作範囲の一片とする.
+                    int side = Mathf.Min(Screen.width, Screen.height) / 2;
 
                     // 正規化.
-                    // x か z を 1 と考えて正規化するため、Normalize でもいいが、負荷を考慮して簡易的に計算.
-                    cameraDirection /= Mathf.Max(Mathf.Abs(cameraDirection.x), Mathf.Abs(cameraDirection.z));
+                    float x = Mathf.Clamp(diff.x / side, -1, 1);
+                    float z = Mathf.Clamp(diff.y / side, -1, 1);
 
-                    // 移動操作の強度を反映.
-                    cameraDirection *= Mathf.Max(Mathf.Abs(direction.x), Mathf.Abs(direction.z));
+                    // 画面上の方向.
+                    var direction = new Vector3(x, 0, z);
 
-                    // 方向を更新.
-                    direction = cameraDirection;
+                    if (Camera != null)
+                    {
+                        // カメラの方向を考慮.
+                        var cameraDirection = Quaternion.Euler(0, Camera.transform.eulerAngles.y, 0) * direction;
+
+                        // 正規化.
+                        // x か z を 1 と考えて正規化するため、Normalize でもいいが、負荷を考慮して簡易的に計算.
+                        cameraDirection /= Mathf.Max(Mathf.Abs(cameraDirection.x), Mathf.Abs(cameraDirection.z));
+
+                        // 移動操作の強度を反映.
+                        cameraDirection *= Mathf.Max(Mathf.Abs(direction.x), Mathf.Abs(direction.z));
+
+                        // 方向を更新.
+                        direction = cameraDirection;
+
+                        LastDragDirection = direction;
+                    }
                 }
 
                 // 送信.
-                ExecuteEvents.Execute<Puppet>(Puppet, null, (a, b) => a.OnMove(direction));
+                ExecuteEvents.Execute<Puppet>(Puppet, null, (a, b) => a.OnMove(LastDragDirection));
 
                 Move = true;
             }
@@ -111,16 +124,23 @@ namespace Muppets
 
         public void OnUp()
         {
-            if (Move)
+            if (DownCount == 1)
             {
-                ExecuteEvents.Execute<Puppet>(Puppet, null, (a, b) => a.OnMove(Vector3.zero));
-            }
-            else if (!LongDown)
-            {
-                ExecuteEvents.Execute<Puppet>(Puppet, null, (a, b) => a.OnClick());
+                LastDragDirection = Vector3.zero;
+
+                if (Move)
+                {
+                    ExecuteEvents.Execute<Puppet>(Puppet, null, (a, b) => a.OnMove(LastDragDirection));
+                }
+                else if (!LongDown)
+                {
+                    ExecuteEvents.Execute<Puppet>(Puppet, null, (a, b) => a.OnClick());
+                }
+
+                LongDown = Down = Move = false;
             }
 
-            Down = LongDown = Move = false;
+            DownCount--;
         }
     }
 }
