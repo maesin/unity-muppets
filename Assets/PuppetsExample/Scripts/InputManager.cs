@@ -1,4 +1,4 @@
-﻿using Muppets;
+﻿using Puppets;
 using UnityEngine;
 
 public class InputManager : MonoBehaviour

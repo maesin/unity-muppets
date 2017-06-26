@@ -1,4 +1,4 @@
-﻿using Muppets;
+﻿using Puppets;
 using UnityEngine;
 
 [RequireComponent(typeof(Rigidbody))]

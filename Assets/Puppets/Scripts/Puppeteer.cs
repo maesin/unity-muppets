@@ -1,7 +1,7 @@
 ﻿using UnityEngine;
 using UnityEngine.EventSystems;
 
-namespace Muppets
+namespace Puppets
 {
     public class Puppeteer : MonoBehaviour
     {
