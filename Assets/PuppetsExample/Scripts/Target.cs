@@ -32,8 +32,10 @@ public class Target : MonoBehaviour, Puppet
         Direction = direction;
     }
 
-    public void OnClick()
+    public void OnClick(Vector3 position)
     {
+        transform.position = new Vector3(position.x, transform.position.y, position.z);
+
         if (Renderer.material == Default)
         {
             Renderer.material = Clicked;

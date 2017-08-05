@@ -13,6 +13,10 @@ namespace Puppets
 
         public float LongDownSeconds = 0.5f;
 
+        public bool ClickRaycast;
+
+        public LayerMask ClickRaycastLayerMask;
+
         Vector2 LastDownPosition;
 
         float LastDownTime;
@@ -122,7 +126,7 @@ namespace Puppets
             }
         }
 
-        public void OnUp()
+        public void OnUp(Vector2 position)
         {
             if (DownCount == 1)
             {
@@ -134,7 +138,22 @@ namespace Puppets
                 }
                 else if (!LongDown)
                 {
-                    ExecuteEvents.Execute<Puppet>(Puppet, null, (a, b) => a.OnClick());
+                    if (ClickRaycast)
+                    {
+                        RaycastHit hit;
+                        Ray ray = Camera.ScreenPointToRay(position);
+
+                        if (Physics.Raycast(ray, out hit, Mathf.Infinity, ClickRaycastLayerMask))
+                        {
+                            ExecuteEvents.Execute<Puppet>(Puppet, null, (a, b) => a.OnClick(hit.point));
+                        }
+                    }
+                    else
+                    {
+                        var near = new Vector3(position.x, position.y, Camera.nearClipPlane);
+                        Vector3 world = Camera.ScreenToWorldPoint(near);
+                        ExecuteEvents.Execute<Puppet>(Puppet, null, (a, b) => a.OnClick(world));
+                    }
                 }
 
                 LongDown = Down = Move = false;

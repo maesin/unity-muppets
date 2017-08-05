@@ -5,7 +5,7 @@ namespace Puppets
 {
     public interface Puppet : IEventSystemHandler
     {
-        void OnClick();
+        void OnClick(Vector3 position);
 
         void OnLongDown();
 

@@ -17,7 +17,7 @@ public class InputManager : MonoBehaviour
         else if (Input.GetMouseButtonUp(0))
         {
             Down = false;
-            Puppeteer.OnUp();
+            Puppeteer.OnUp(Input.mousePosition);
         }
         else if (Down && Input.GetMouseButton(0))
         {
